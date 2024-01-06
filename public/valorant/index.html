@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Player Rank Display</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-size: cover;
+        }
+
+        .rank-container {
+            transform-origin: center;
+            position: relative;
+            text-align: center;
+            color: #fff;
+            font-weight: bold;
+        }
+
+        .player-name {
+            position: absolute;
+            top: -45px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #FFFFFF;
+            font-size: 1.2em;
+        }
+
+        .rank-shield {
+            width: 100px;
+            height: 100px;
+            margin: 0 auto;
+        }
+
+        .rank-shield img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .rank-info {
+            margin-top: 20px;
+        }
+
+        .rank-title {
+            font-size: 2em;
+            margin-bottom: 10px;
+            color: #ffd700;
+        }
+
+        .rank-bar {
+            background-color: #204056;
+            border-radius: 10px;
+            padding: 3px;
+            position: relative;
+            height: 10px;
+            width: 300px;
+            margin: 0 auto;
+        }
+
+        .rank-progress {
+            text-align: right;
+            padding-right: 5px;
+            line-height: 20px;
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.5s ease;
+            position: absolute;
+            left: 0;
+            top: 0;
+        }
+
+        .rank-bar {
+            position: relative;
+        }
+
+        .rank-percentage {
+            position: absolute;
+            right: 0;
+            top: 0;
+            padding: 0 5px;
+            line-height: 20px;
+            color: #FFFFFF;
+        }
+
+        .text-shadow {
+            text-shadow:
+                    0 0 5px #000,
+                    0 0 10px #000,
+                    0 0 20px #000,
+                    0 0 30px #000,
+                    0 0 40px #000,
+                    1px 1px 2px #000;
+        }
+    </style>
+<body>
+<div class="rank-container" id="rank-container">
+    <div class="player-name text-shadow" id="player-name">Loading...</div>
+    <div class="rank-shield">
+        <img id="rank-shield-image">
+    </div>
+    <div class="rank-info">
+        <div class="rank-title text-shadow" id="rank-title"><span class="data" id="rank-name">Loading...</span></div>
+        <div class="rank-bar">
+            <div class="rank-progress text-shadow" id="rank-progress-bottom" style="width: 0;"></div>
+            <div class="rank-progress text-shadow" id="rank-progress" style="width: 0;"></div>
+            <div class="rank-percentage text-shadow"><br><span id="rank-percentage">Loading...</span></div>
+        </div>
+    </div>
+</div>
+</body>
+<script>
+    Number.prototype.clamp = function(min, max) {
+        return Math.min(Math.max(this, min), max);
+    };
+    function getRankColor(rankName) {
+        const rankColors = {
+            'IRON': '#5C5C5C',
+            'BRONZE': '#CD7F32',
+            'SILVER': '#C0C0C0',
+            'GOLD': '#FFD700',
+            'PLATINUM': '#00BFFF',
+            'DIAMOND': '#4B0082',
+            'ASCENDANT': '#008000',
+            'IMMORTAL': '#B22222',
+            'RADIANT': '#FFA500'
+        };
+
+        return rankColors[rankName.split(" ")[0].toUpperCase()] || '#FFFFFF';
+    }
+
+    function createProgressBar(data){
+        let rankName = data['data']['currenttierpatched']
+        let rankColor = getRankColor(rankName)
+
+        let progressbar = document.getElementById('rank-progress')
+        let progressbarBottom = document.getElementById('rank-progress-bottom')
+
+        let color = 'red'
+        let last = data['data']['mmr_change_to_last_game']
+        let currentMMR = data['data']['ranking_in_tier']
+        if (last > 0) {
+            color = 'green'
+        }
+
+
+        let bottomProgress
+        let topProgress
+        let topLabel = last + " RR"
+        if(last > 0) {
+            bottomProgress = currentMMR
+            topLabel = "+" + topLabel
+            topProgress = currentMMR - last
+        }
+        else{
+            bottomProgress = currentMMR - last
+            topProgress = currentMMR
+        }
+
+        topProgress = topProgress.clamp(0, 100)
+        bottomProgress = bottomProgress.clamp(0, 100)
+
+        progressbar.style.width = topProgress + '%'
+        progressbar.textContent = topLabel
+        progressbar.style.backgroundColor = rankColor
+
+
+        progressbarBottom.style.width = bottomProgress + '%'
+        progressbarBottom.style.backgroundColor = color
+    }
+
+    function createWebsiteData(data, scale){
+        createProgressBar(data)
+
+        document.getElementById('rank-shield-image').src = data['data']['images']['large'];
+        let rankName = document.getElementById('rank-name');
+        rankName.textContent = data['data']['currenttierpatched']
+        rankName.style.color = getRankColor(data['data']['currenttierpatched']);
+
+        document.getElementById('rank-percentage').textContent = data['data']['ranking_in_tier'] + " RR";
+
+        document.getElementById('player-name').textContent = data['data']['name'];
+
+        document.getElementById('rank-container').style.transform = `scale(${scale})`;
+    }
+
+    function fetchData() {
+        const name = 'GodOfEuWest';
+        const tag = '6189';
+        const scale = '1.8';
+        // const name = document.getElementById("data-name").textContent;
+        // const tag = document.getElementById("data-tag").textContent;
+        // const scale = document.getElementById("data-scale").textContent;
+
+        //Yao Ming/Faded
+        //GodOfEuWest/6189
+        //Timetraveller/9822
+
+        fetch(`https://api.henrikdev.xyz/valorant/v1/mmr/eu/${name}/${tag}`)
+            .then(response => response.json())
+            .then(data => createWebsiteData(data, scale))
+            .catch(error => console.error('Error fetching data:', error));
+    }
+
+    fetchData();
+    setInterval(fetchData, 1000 * 60); // then every minute</script>
+</html>
